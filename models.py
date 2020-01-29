@@ -1,4 +1,6 @@
-from sqlalchemy import Column, String, create_engine, Integer
+import os
+from datetime import datetime
+from sqlalchemy import Column
 from flask_sqlalchemy import SQLAlchemy
 import json
 
@@ -7,7 +9,7 @@ database_path = os.environ['DATABASE_URL']
 db = SQLAlchemy()
 
 
-def setup_db(app, database_path=database_path):
+def setup_db(app, database_path):
     """
     setup_db(app)
         binds a flask application and a SQLAlchemy service
@@ -19,23 +21,33 @@ def setup_db(app, database_path=database_path):
     db.create_all()
 
 
-class Person(db.Model):
-    """
-    Person
-    Have title and release year
-    """
-    __tablename__ = 'People'
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    auth0_id = db.Column(unique=True)
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    catchphrase = Column(String)
+class Game(db.Model):
+    __tablename__ = 'games'
+    id = Column(db.Integer, primary_key=True)
+    name = Column(db.String)
 
-    def __init__(self, name, catchphrase=""):
-        self.name = name
-        self.catchphrase = catchphrase
 
-    def format(self):
-        return {
-          'id': self.id,
-          'name': self.name,
-          'catchphrase': self.catchphrase}
+class Match(db.Model):
+    __tablename__ = 'matches'
+    id = Column(db.Integer, primary_key=True)
+    name = Column(db.String)
+    uuid = Column(db.String(64))
+    creator_id = db.Column(db.Integer)
+    game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=True)
+    created_at = db.Column(db.DateTime(), default=datetime.now)
+    updated_at = db.Column(db.DateTime(), default=datetime.now, onupdate=datetime.now)
+
+
+class Tournament(db.Model):
+    __tablename__ = 'tournaments'
+    id = Column(db.Integer, primary_key=True)
+    name = Column(db.String)
+    uuid = Column(db.String(64))
+    game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
