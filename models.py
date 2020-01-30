@@ -4,7 +4,6 @@ from sqlalchemy import Column
 from flask_sqlalchemy import SQLAlchemy
 import json
 
-database_path = os.environ['DATABASE_URL']
 
 db = SQLAlchemy()
 
@@ -14,6 +13,7 @@ def setup_db(app, database_path):
     setup_db(app)
         binds a flask application and a SQLAlchemy service
     """
+    database_path = database_path or os.environ['DATABASE_URL']
     app.config["SQLALCHEMY_DATABASE_URI"] = database_path
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.app = app
@@ -24,7 +24,12 @@ def setup_db(app, database_path):
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    auth0_id = db.Column(unique=True)
+    auth0_id = db.Column(db.String(64), unique=True)
+    match_participations = db.relationship('MatchParticipants', backref='user')
+    matches = db.relationship('Match', backref=db.backref('matches', cascade="all, delete-orphan"))
+    tournament_participations = db.relationship('TournamentParticipants', backref='user')
+    tournaments = db.relationship('Tournament', backref=db.backref('tournaments', cascade="all, delete-orphan"))
+
 
 class Game(db.Model):
     __tablename__ = 'games'
@@ -40,8 +45,11 @@ class Match(db.Model):
     creator_id = db.Column(db.Integer)
     game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=True)
+    max_participants = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime(), default=datetime.now)
     updated_at = db.Column(db.DateTime(), default=datetime.now, onupdate=datetime.now)
+    match_participations = db.relationship('MatchParticipants', backref='match')
+    users = db.relationship('User', backref=db.backref('users', cascade="all, delete-orphan"))
 
 
 class Tournament(db.Model):
@@ -51,3 +59,22 @@ class Tournament(db.Model):
     uuid = Column(db.String(64))
     game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
+    start_date = db.Column(db.DateTime, nullable=True)
+    tournament_participations = db.relationship('TournamentParticipants', backref='tournament')
+    users = db.relationship('User', backref=db.backref('users', cascade="all, delete-orphan"))
+
+
+class TournamentParticipants(db.Model):
+    __tablename__ = 'tournament_participants'
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    participate_date = db.Column(db.DateTime(), default=datetime.now)
+
+
+class MatchParticipants(db.Model):
+    __tablename__ = 'match_participants'
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    participate_date = db.Column(db.DateTime(), default=datetime.now)
