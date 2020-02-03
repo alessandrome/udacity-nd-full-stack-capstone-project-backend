@@ -43,6 +43,10 @@ class User(ModelAction):
     tournament_participations = db.relationship('TournamentParticipants', backref='user')
     tournaments = db.relationship('Tournament', backref=db.backref('tournaments', cascade="all, delete-orphan"))
 
+    def get_user(self, auth0_id=None):
+        if not auth0_id:
+            pass
+
 
 class Game(ModelAction):
     __tablename__ = 'games'
