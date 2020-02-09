@@ -11,6 +11,7 @@ def create_app(test_config=None):
     setup_db(app, os.environ['DATABASE_URL'])
     migrate = Migrate(app, db)
     CORS(app)
+    app.register_blueprint(routes.game_blueprint)
     app.register_blueprint(routes.match_blueprint)
     app.register_blueprint(routes.tournament_blueprint)
 
