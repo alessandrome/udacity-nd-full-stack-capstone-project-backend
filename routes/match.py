@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from models import db, Match, Tournament, User
 import random
 
@@ -20,7 +20,7 @@ def get_matches():
     return_matches = []
     for match in pagination.items:
         return_matches.append(match.short())
-    return return_matches
+    return jsonify(return_matches)
 
 
 @match_blueprint.route('/matches', methods=['POST'])
@@ -46,12 +46,15 @@ def create_match():
     if 'tournament_id' in data:
         tournament = db.session.query(Tournament).filters((Tournament.id == data['tournament_id']) & (Tournament.creator_id == user.id))
     match.insert()
-    pass
+    return jsonify(match), 201
 
 
-@match_blueprint.route('/matches/<int:match_id>')
-def get_match(match_id):
-    pass
+@match_blueprint.route('/matches/<string:match_uuid>')
+def get_match(match_uuid):
+    match = db.session.query(Match).filter(Match.uuid == match_uuid).first()
+    if not match:
+        return {'error': 'Match not found'}, 404
+    return jsonify(match.long())
 
 
 @match_blueprint.route('/matches/<int:match_id>', methods=['PATCH'])
@@ -61,9 +64,13 @@ def patch_match(match_id):
 
 @match_blueprint.route('/matches/<int:match_id>', methods=['DELETE'])
 def delete_match(match_id):
-    pass
+    match = db.session.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        return {'error': 'Match not found'}, 404
+    match.delete()
+    return '', 204
 
 
 def generate_uuid(length):
     chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-    return ''.join(random.choices(chars, k=length))
+    return 'm' + ''.join(random.choices(chars, k=length))

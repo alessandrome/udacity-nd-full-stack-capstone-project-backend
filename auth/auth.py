@@ -1,6 +1,6 @@
 import os
 import json
-from flask import request, _request_ctx_stack
+from flask import request, _request_ctx_stack, session
 from functools import wraps
 from jose import jwt
 from urllib.request import urlopen
@@ -108,3 +108,13 @@ def requires_auth(permission=''):
             return f(payload, *args, **kwargs)
         return wrapper
     return requires_auth_decorator
+
+
+def get_logged_user():
+    try:
+        token = get_token_auth_header()
+        payload = verify_decode_jwt(token)
+        oauth_id = payload['sub']
+        # TODO: search user. If not found add it to DB
+    except AuthError as ex:
+        return None

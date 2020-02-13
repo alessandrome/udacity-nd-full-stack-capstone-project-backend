@@ -37,7 +37,6 @@ class ModelAction(db.Model):
 class User(ModelAction):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    auth0_id = db.Column(db.String(64), unique=True)
     match_participations = db.relationship('MatchParticipants', backref='user')
     matches = db.relationship('Match', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
     tournament_participations = db.relationship('TournamentParticipants', backref='user')
@@ -46,6 +45,13 @@ class User(ModelAction):
     def get_user(self, auth0_id=None):
         if not auth0_id:
             pass
+
+
+class UserAccount(ModelAction):
+    __tablename__ = 'user_accounts'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    oauth_id = db.Column(db.String(255), primary_key=True)
+    user = db.relationship('User', backref='oauth_accounts')
 
 
 class Game(ModelAction):

@@ -15,6 +15,12 @@ def create_app(test_config=None):
     app.register_blueprint(routes.match_blueprint)
     app.register_blueprint(routes.tournament_blueprint)
 
+    @app.after_request
+    def after_request(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = '*'
+        return response
+
     @app.route('/')
     def get_greeting():
         greeting = "Hello"
