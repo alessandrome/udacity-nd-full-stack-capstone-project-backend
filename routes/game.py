@@ -14,6 +14,26 @@ def get_games():
     search_term = request.args.get('searchTerm', None, str)
     if search_term:
         q = q.filter((Game.name.ilike('%{}%'.format(search_term))))  # Filter by term
+    order_by_str = request.args.get('orderBy', '', str)
+    if order_by_str:
+        order_by_values = order_by_str.split(',')
+    else:
+        order_by_values = []
+    if order_by_values:
+        # Order result by specified and admitted values (multiple order values)
+        for order_by_value in order_by_values:
+            splitted_order_by_value = order_by_value.split(':')
+            value = splitted_order_by_value[0]
+            if len(splitted_order_by_value) == 2 and (
+                    splitted_order_by_value[1] == 'asc' or splitted_order_by_value[1] == 'desc'):
+                direction = splitted_order_by_value[1]
+            else:
+                direction = 'asc'
+            if order_by_value == 'name':
+                q = q.order_by()
+    else:
+        print('ads')
+        q = q.order_by(Game.name.asc())
     pagination = q.paginate(page, per_page, max_per_page)  # Paginate result
     return_games = []
     for game in pagination.items:
