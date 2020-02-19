@@ -46,6 +46,15 @@ class User(ModelAction):
         if not auth0_id:
             pass
 
+    def base_info(self):
+        oauth_accounts = []
+        for oauth in self.oauth_accounts:
+            oauth_accounts.append(oauth.oauth_id)
+        return {
+            'id': self.id,
+            'oauth_id_list': oauth_accounts,
+        }
+
 
 class UserAccount(ModelAction):
     __tablename__ = 'user_accounts'
