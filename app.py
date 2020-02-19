@@ -19,6 +19,7 @@ def create_app(test_config=None):
     def after_request(response):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Headers'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = '*'
         return response
 
     @app.route('/')
