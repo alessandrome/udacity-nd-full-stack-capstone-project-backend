@@ -33,14 +33,20 @@ class ModelAction(db.Model):
         db.session.delete(self)
         db.session.commit()
 
+    def long(self):
+        raise NotImplementedError
+
+    def short(self):
+        raise NotImplementedError
+
 
 class User(ModelAction):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     match_participations = db.relationship('MatchParticipants', backref='user')
-    matches = db.relationship('Match', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
+    matches = db.relationship('Match', secondary='match_participants', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
     tournament_participations = db.relationship('TournamentParticipants', backref='user')
-    tournaments = db.relationship('Tournament', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
+    tournaments = db.relationship('Tournament', secondary='tournament_participants', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
 
     def get_user(self, auth0_id=None):
         if not auth0_id:
@@ -53,6 +59,16 @@ class User(ModelAction):
         return {
             'id': self.id,
             'oauth_id_list': oauth_accounts,
+        }
+
+    def short(self):
+        return {
+            'id': self.id,
+        }
+
+    def long(self):
+        return {
+            'id': self.id,
         }
 
 
@@ -99,12 +115,20 @@ class Match(ModelAction):
     game = db.relationship('Game', backref='matches')
 
     def short(self):
+        game = self.game.short() if self.game else None
+        participants = []
+        for participant in self.participants:
+            participants.append(participant.short())
         match = {
             'id': self.id,
             'uuid': self.uuid,
             'name': self.name,
-            'game': self.game,
+            'game_id': self.game_id,
+            'game': game,
             'max_participants': self.max_participants,
+            'participants': participants,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
         }
         return match
 
@@ -116,11 +140,18 @@ class Match(ModelAction):
                 'tournament_uuid': self.tournament.uuid,
                 'tournament_name': self.tournament.name,
             }
+        game = self.game
+        if game:
+            game = game.short()
+        creator = self.creator
+        if creator:
+            creator.short()
         match = {
             'id': self.id,
             'uuid': self.id,
             'name': self.name,
-            'game': self.game,
+            'creator_id': self.creator_id,
+            'game': game,
             'max_participants': self.max_participants,
             'tournament': tournament,
         }
@@ -138,6 +169,7 @@ class Tournament(ModelAction):
     creator = db.relationship('User', backref='created_tournaments')
     tournament_participations = db.relationship('TournamentParticipants', backref='tournament')
     users = db.relationship('User', backref=db.backref('users', cascade="all, delete-orphan"))
+    match = db.relationship('Match', backref='tournament')
 
 
 class TournamentParticipants(ModelAction):

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from models import db, Match, Tournament, User
+from models import db, Match, Tournament, User, Game
 import random
+import auth
 
 match_blueprint = Blueprint('match', __name__)
 
@@ -15,17 +16,38 @@ def get_matches():
     if search_term:
         q = q.filter((Match.name.ilike('%{}%'.format(search_term)))
                      | (Match.game.name.ilike('%{}%'.format(search_term))))  # Filter by term
-    q = q.filter(Match.is_private == True)
+    # Retrieve logged user and filter by private matches and by user owned matches
+    logged_user =auth.get_logged_user()
+    if logged_user:
+        q = q.filter((Match.is_private == False) | (Match.creator_id == logged_user.id))
+    else:
+        q = q.filter((Match.is_private == False))
     pagination = q.paginate(page, per_page, max_per_page)  # Paginate result
     return_matches = []
     for match in pagination.items:
         return_matches.append(match.short())
-    return jsonify(return_matches)
+    return_data = {
+        'matches': return_matches,
+        'total_matches': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages,
+    }
+    return jsonify(return_data)
 
 
 @match_blueprint.route('/matches', methods=['POST'])
-def create_match():
+@auth.requires_auth('create:match')
+def create_match(payload):
     data = request.json
+
+    # Prepare game
+    game = Game.query.filter(Game.id == data['gameId']).first()
+    if not game:
+        game = Game.query.filter(Game.name.ilike(data['gameName'].strip())).first()
+    if not game:
+        game = Game(name=data['gameName'])
+        db.session.add(game)
+
     match = Match(name=data)
     user = db.session.query(User).first()  # TODO: implement a get_user method
     uuid_len = 6
@@ -41,12 +63,19 @@ def create_match():
         uuid = generate_uuid(uuid_len)
         match_found = db.session.query(Match).filter(Match.uuid == uuid).first()
     match.uuid = uuid
-    if 'is_private' in data:
-        match.is_private = data['is_private']
-    if 'tournament_id' in data:
-        tournament = db.session.query(Tournament).filters((Tournament.id == data['tournament_id']) & (Tournament.creator_id == user.id))
-    match.insert()
-    return jsonify(match), 201
+    match.name = data['name']
+    match.max_participants = data['maxParticipants'] if 'maxParticipants' in data else 2
+    match.game_id = game.id
+    if 'isPrivate' in data:
+        match.is_private = data['isPrivate']
+    else:
+        match.is_private = False
+    user = auth.get_logged_user()
+    match.creator_id = user.id
+    user.matches.append(match)
+    db.session.add(match)
+    db.session.commit()
+    return jsonify(match.long()), 201
 
 
 @match_blueprint.route('/matches/<string:match_uuid>')
