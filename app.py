@@ -5,6 +5,8 @@ from flask_migrate import Migrate
 from models import db, setup_db
 import routes
 import auth
+import errors
+
 
 def create_app(test_config=None):
 
@@ -35,7 +37,15 @@ def create_app(test_config=None):
             user = user.base_info()
         return jsonify(user)
 
+    # Set default HTTP errors handlers
+    app.register_error_handler(400, errors.bad_request_error)
+    app.register_error_handler(401, errors.unauthorized_error)
+    app.register_error_handler(403, errors.forbidden_error)
+    app.register_error_handler(404, errors.not_found_error)
+    app.register_error_handler(500, errors.server_error)
+
     return app
+
 
 app = create_app()
 

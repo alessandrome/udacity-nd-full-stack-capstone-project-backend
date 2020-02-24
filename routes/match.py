@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
-from models import db, Match, Tournament, User, Game
+from models import db, Match, Tournament, User, Game, MatchParticipants
 import random
 import auth
+import errors
 
 match_blueprint = Blueprint('match', __name__)
 
@@ -82,20 +83,77 @@ def create_match(payload):
 def get_match(match_uuid):
     match = db.session.query(Match).filter(Match.uuid == match_uuid).first()
     if not match:
-        return {'error': 'Match not found'}, 404
+        return errors.not_found_error('Match not found')
     return jsonify(match.long())
 
 
 @match_blueprint.route('/matches/<int:match_id>', methods=['PATCH'])
-def patch_match(match_id):
-    pass
+@auth.requires_auth()
+def patch_match(payload, match_id):
+    data = request.json
+    if not 'action' in data:
+        return errors.bad_request_error('Passed data must contain "action" value')
+    action = data['action']
+    # Get Match
+    match = db.session.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        return errors.not_found_error('Match not found')
+
+    logged_user = auth.get_logged_user()
+    if action == 'join':
+        if len(match.participants) < match.max_participants:
+            for participant in match.participants:
+                if participant.id == logged_user.id:
+                    return errors.bad_request_error('You can\'t join an already joined match')
+            match.participants.append(logged_user)
+            match.update()
+            return '', 204
+        else:
+            return errors.bad_request_error('You can\'t join on a full match')
+    elif action == 'disjoin':
+        MatchParticipants.query.filter((MatchParticipants.match_id == match_id) & (MatchParticipants.user_id == logged_user.id)).delete()
+        db.session.commit()
+        return '', 204
+    elif action == 'edit':
+        if match.creator_id != logged_user.id:
+            return errors.forbidden_error('You can edit only you\'re matches')
+        if 'max_participants' in data:
+            match.max_participants = data['max_participants']
+        if 'name' in data:
+            match.name = data.name
+        if 'join' in data:
+            for user_id in data['join']:
+                user = User.query.filter(User.id == user_id).first()
+                if user:
+                    match.participants.append(user)
+        if 'remove' in data:
+            match.participants.filter(User.id.in_(data['remove'])).clear()
+            MatchParticipants.query.filter(
+                (MatchParticipants.match_id == match_id) & (MatchParticipants.user_id.in_(data['remove']))).delete()
+        db.session.commit()
+        return jsonify(match.long())
+    return errors.bad_request_error('"{}" action is not supported'.format(action))
 
 
+@auth.requires_auth('delete:match')
 @match_blueprint.route('/matches/<int:match_id>', methods=['DELETE'])
 def delete_match(match_id):
     match = db.session.query(Match).filter(Match.id == match_id).first()
     if not match:
-        return {'error': 'Match not found'}, 404
+        return errors.not_found_error('Match not found')
+    logged_user = auth.get_logged_user()
+    if match.creator_id != logged_user.id:
+        return errors.forbidden_error('You can\'t delete a not your own match')
+    match.delete()
+    return '', 204
+
+
+@auth.requires_auth('delete:any-match')
+@match_blueprint.route('/matches/<int:match_id>', methods=['DELETE'])
+def delete_any_match(match_id):
+    match = db.session.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        return errors.not_found_error('Match not found')
     match.delete()
     return '', 204
 

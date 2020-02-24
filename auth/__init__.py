@@ -58,6 +58,9 @@ def get_token_auth_header():
     return true otherwise
 '''
 def check_permissions(permission, payload):
+    if not payload:
+        token = get_token_auth_header()
+        payload = verify_decode_jwt(token)
     if 'permissions' not in payload:
         raise AuthError('Permissions are not included in JWT', 403)
     if permission not in payload['permissions']:
@@ -105,14 +108,14 @@ def requires_auth(permission=''):
         def wrapper(*args, **kwargs):
             token = get_token_auth_header()
             payload = verify_decode_jwt(token)
-            check_permissions(permission, payload)
+            if permission:
+                check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
         return wrapper
     return requires_auth_decorator
 
 
 def get_logged_user():
-    print('Audicente', API_AUDIENCE)
     try:
         token = get_token_auth_header()
         payload = verify_decode_jwt(token)
@@ -120,7 +123,7 @@ def get_logged_user():
         # TODO: search user. If not found add it to DB
         user = User.query.filter(User.oauth_accounts.any(UserAccount.oauth_id == oauth_id)).first()
         if not user:
-            user = User()
+            user = User(name=oauth_id)
             user.insert()
             user_account = UserAccount(user_id=user.id, oauth_id=oauth_id)
             user_account.insert()

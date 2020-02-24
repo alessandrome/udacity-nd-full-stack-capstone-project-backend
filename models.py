@@ -43,6 +43,7 @@ class ModelAction(db.Model):
 class User(ModelAction):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, unique=True)
     match_participations = db.relationship('MatchParticipants', backref='user')
     matches = db.relationship('Match', secondary='match_participants', backref=db.backref('participants', cascade="all, delete-orphan", single_parent=True))
     tournament_participations = db.relationship('TournamentParticipants', backref='user')
@@ -58,17 +59,20 @@ class User(ModelAction):
             oauth_accounts.append(oauth.oauth_id)
         return {
             'id': self.id,
+            'name': self.name,
             'oauth_id_list': oauth_accounts,
         }
 
     def short(self):
         return {
             'id': self.id,
+            'name': self.name,
         }
 
     def long(self):
         return {
             'id': self.id,
+            'name': self.name,
         }
 
 
@@ -101,7 +105,7 @@ class Match(ModelAction):
     __tablename__ = 'matches'
     id = Column(db.Integer, primary_key=True)
     name = Column(db.String)
-    uuid = Column(db.String(64))
+    uuid = Column(db.String(64), unique=True)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
     is_private = db.Column(db.Boolean, default=False)
@@ -161,7 +165,7 @@ class Tournament(ModelAction):
     __tablename__ = 'tournaments'
     id = Column(db.Integer, primary_key=True)
     name = Column(db.String)
-    uuid = Column(db.String(64))
+    uuid = Column(db.String(64), unique=True)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     game_id = db.Column(db.Integer, db.ForeignKey('games.id'))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'))
