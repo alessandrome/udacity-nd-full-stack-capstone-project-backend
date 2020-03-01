@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, redirect, Response
 from models import db, Match, Tournament, User, Game
 import random
+import auth
 
 game_blueprint = Blueprint('game', __name__)
 
@@ -47,6 +48,7 @@ def get_games():
     return jsonify(return_data)
 
 
+@auth.requires_auth('create:game')
 @game_blueprint.route('/games', methods=['POST'])
 def create_game():
     data = request.json
@@ -70,6 +72,7 @@ def get_game(game_id):
     return jsonify(game.long())
 
 
+@auth.requires_auth('update:game')
 @game_blueprint.route('/games/<int:game_id>', methods=['PATCH'])
 def patch_game(game_id):
     game = db.session.query(Game).filter(Game.id == game_id).first()
@@ -82,6 +85,7 @@ def patch_game(game_id):
     return jsonify(game.long())
 
 
+@auth.requires_auth('delete:game')
 @game_blueprint.route('/games/<int:game_id>', methods=['DELETE'])
 def delete_game(game_id):
     game = db.session.query(Game).filter(Game.id == game_id).first()
