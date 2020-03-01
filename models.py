@@ -156,7 +156,7 @@ class Match(ModelAction):
 
         match = {
             'id': self.id,
-            'uuid': self.id,
+            'uuid': self.uuid,
             'name': self.name,
             'creator_id': self.creator_id,
             'game_id': self.game_id,

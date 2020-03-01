@@ -132,6 +132,25 @@ def patch_match(payload, match_id):
             match.participants.filter(User.id.in_(data['remove'])).clear()
             MatchParticipants.query.filter(
                 (MatchParticipants.match_id == match_id) & (MatchParticipants.user_id.in_(data['remove']))).delete()
+        if 'gameId' in data:
+            print('gameId is', data['gameId'])
+            if data['gameId'] is None:
+                match.game_id = None
+            else:
+                game = Game.query.filter(Game.id == data['gameId']).first()
+                if not game:
+                    game = Game.query.filter(Game.name.ilike(data['gameName'].strip())).first()
+                    if not game:
+                        if 'gameName' in data:
+                            game = Game(name=data['gameName'])
+                            db.session.add(game)
+                            db.session.flush()
+                            print(game.id)
+                            match.game_id = game.id
+                    else:
+                        match.game_id = game.id
+                else:
+                    match.game_id = game.id
         db.session.commit()
         return jsonify(match.long())
     return errors.bad_request_error('"{}" action is not supported'.format(action))
@@ -174,12 +193,9 @@ def match_users(match_id):
         q = q.filter((User.name.ilike('%{}%'.format(search_term))))  # Filter by term
     user_joined = request.args.get('joined', 1, int)
     if user_joined:
-        print(True)
         q = q.filter(User.matches.any(Match.id == match_id))
     else:
-        print(False)
         q = q.filter(~ (User.matches.any(Match.id == match_id)))
-    print(q)
     pagination = q.paginate(page, per_page, max_per_page)  # Paginate result
     return_users = []
     for user in pagination.items:
