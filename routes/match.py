@@ -50,7 +50,6 @@ def create_match(payload):
         db.session.add(game)
 
     match = Match(name=data)
-    user = db.session.query(User).first()  # TODO: implement a get_user method
     uuid_len = 6
     tries = 0
     max_tries = 10
