@@ -145,7 +145,6 @@ def patch_match(payload, match_id):
                             game = Game(name=data['gameName'])
                             db.session.add(game)
                             db.session.flush()
-                            print(game.id)
                             match.game_id = game.id
                     else:
                         match.game_id = game.id
