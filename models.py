@@ -150,14 +150,23 @@ class Match(ModelAction):
         creator = self.creator
         if creator:
             creator.short()
+        participants = []
+        for participant in self.participants:
+            participants.append(participant.short())
+
         match = {
             'id': self.id,
             'uuid': self.id,
             'name': self.name,
             'creator_id': self.creator_id,
+            'game_id': self.game_id,
             'game': game,
             'max_participants': self.max_participants,
             'tournament': tournament,
+            'participants': participants,
+            'is_private': self.is_private,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
         }
         return match
 

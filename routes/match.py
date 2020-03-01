@@ -117,10 +117,12 @@ def patch_match(payload, match_id):
     elif action == 'edit':
         if match.creator_id != logged_user.id:
             return errors.forbidden_error('You can edit only you\'re matches')
-        if 'max_participants' in data:
-            match.max_participants = data['max_participants']
+        if 'maxParticipants' in data:
+            match.max_participants = data['maxParticipants']
         if 'name' in data:
-            match.name = data.name
+            match.name = data['name']
+        if 'isPrivate' in data:
+            match.is_private = data['isPrivate']
         if 'join' in data:
             for user_id in data['join']:
                 user = User.query.filter(User.id == user_id).first()
@@ -156,6 +158,39 @@ def delete_any_match(match_id):
         return errors.not_found_error('Match not found')
     match.delete()
     return '', 204
+
+
+@match_blueprint.route('/matches/<int:match_id>/users')
+def match_users(match_id):
+    match = db.session.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        return errors.not_found_error('Match not found')
+    max_per_page = 50
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('perPage', 20, type=int)
+    q = db.session.query(User)
+    search_term = request.args.get('searchTerm', None, str)
+    if search_term:
+        q = q.filter((User.name.ilike('%{}%'.format(search_term))))  # Filter by term
+    user_joined = request.args.get('joined', 1, int)
+    if user_joined:
+        print(True)
+        q = q.filter(User.matches.any(Match.id == match_id))
+    else:
+        print(False)
+        q = q.filter(~ (User.matches.any(Match.id == match_id)))
+    print(q)
+    pagination = q.paginate(page, per_page, max_per_page)  # Paginate result
+    return_users = []
+    for user in pagination.items:
+        return_users.append(user.short())
+    return_data = {
+        'users': return_users,
+        'total_users': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages,
+    }
+    return jsonify(return_data)
 
 
 def generate_uuid(length):
