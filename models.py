@@ -183,7 +183,56 @@ class Tournament(ModelAction):
     creator = db.relationship('User', backref='created_tournaments')
     tournament_participations = db.relationship('TournamentParticipants', backref='tournament')
     users = db.relationship('User', backref=db.backref('users', cascade="all, delete-orphan"))
-    match = db.relationship('Match', backref='tournament')
+    matches = db.relationship('Match', backref='tournament')
+    game = db.relationship('Game', backref='tournaments')
+
+    def short(self):
+        game = self.game.short() if self.game else None
+        participants = []
+        for participant in self.participants:
+            participants.append(participant.short())
+        match = {
+            'id': self.id,
+            'uuid': self.uuid,
+            'name': self.name,
+            'game_id': self.game_id,
+            'game': game,
+            'creator_id': self.creator_id,
+            'max_participants': self.max_participants,
+            'participants': participants,
+            'start_date': self.start_date,
+            'start_date_tz': self.start_date_tz,
+        }
+        return match
+
+    def long(self):
+        matches = []
+        for match in self.matches:
+            matches.append(match.short())
+        game = self.game
+        if game:
+            game = game.short()
+        creator = self.creator
+        if creator:
+            creator.short()
+        participants = []
+        for participant in self.participants:
+            participants.append(participant.short())
+
+        match = {
+            'id': self.id,
+            'uuid': self.uuid,
+            'name': self.name,
+            'creator_id': self.creator_id,
+            'game_id': self.game_id,
+            'game': game,
+            'max_participants': self.max_participants,
+            'matches': matches,
+            'participants': participants,
+            'start_date': self.start_date,
+            'start_date_tz': self.start_date_tz
+        }
+        return match
 
 
 class TournamentParticipants(ModelAction):

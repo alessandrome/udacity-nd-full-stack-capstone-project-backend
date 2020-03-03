@@ -73,9 +73,31 @@ def create_tournament(payload):
     tournament.creator_id = user.id
     db.session.add(tournament)
     db.session.flush()
-    user.tournaments.append(tournament)
     db.session.commit()
     return jsonify(tournament.long()), 201
+
+
+@auth.requires_auth('delete:tournament')
+@tournament_blueprint.route('/tournaments/<int:tournament_id>', methods=['DELETE'])
+def delete_tournament(tournament_id):
+    tournament = db.session.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tournament:
+        return errors.not_found_error('Tournament not found')
+    logged_user = auth.get_logged_user()
+    if tournament.creator_id == logged_user.id:
+        tournament.delete()
+        return '', 204
+    errors.forbidden_error('You can\'t delete a not your tournament')
+
+
+@auth.requires_auth('delete:any-tournament')
+@tournament_blueprint.route('/tournaments/<int:tournament_id>', methods=['DELETE'])
+def delete_any_tournament(tournament_id):
+    tournament = db.session.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tournament:
+        return errors.not_found_error('Tournament not found')
+    tournament.delete()
+    return '', 204
 
 
 def generate_uuid(length):
